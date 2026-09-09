@@ -216,3 +216,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Worship Guide build and private user data
+node_modules/
+dist/
+*.db
+*.sqlite
+*.sqlite3
+*.pdf
+*.png
+*.jpg
+*backup*.json
+.env*
+__pycache__/
+.vercel/
+/node_modules
