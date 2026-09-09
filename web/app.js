@@ -107,7 +107,7 @@ function renderSettings(){
    if(state.documents.some(x=>x.id===old)){
     const existing=await store.file(old);let same=!blob;
     if(existing&&blob){const a=new Uint8Array(await existing.arrayBuffer()),b=new Uint8Array(await blob.arrayBuffer());same=a.length===b.length&&a.every((v,i)=>v===b[i]);}
-    if(!same){d.id=id();for(const score of incoming.scores)if(score.documentId===old)score.documentId=d.id;}
+    if(!same||JSON.stringify(state.documents.find(x=>x.id===old))!==JSON.stringify(d)){d.id=id();for(const score of incoming.scores)if(score.documentId===old)score.documentId=d.id;}
    }
    if(blob)files.push([d.id,blob]);
   }
