@@ -200,6 +200,8 @@ class ReviewCenter(tk.Toplevel):
         conf = row.get("confidence") or ""
         self.conf_var.set(conf)
         self.page_var.set(str(self._page_number(row)))
+        self.key_var.set("")
+        self.key_conf_var.set("Key 분석 중...")
         self.counter_var.set(f"{self.index+1} / {len(self.rows)}")
         self._show_image()
         self._detect_key_candidate()
@@ -225,30 +227,30 @@ class ReviewCenter(tk.Toplevel):
             self.canvas.create_text(20,20,anchor="nw",fill="white",text=str(e))
 
 
-def _detect_key_candidate(self):
-    if not self.rows:
-        return
-    p = self._image_path(self.rows[self.index])
-    if not p or not p.exists():
-        self.key_conf_var.set("자동 인식 불가")
-        return
-    try:
-        if self._key_detector is None:
-            backend = create_ocr_backend("easyocr")
-            reader = getattr(backend, "_reader", None)
-            if reader is None:
-                self.key_conf_var.set("자동 인식 불가")
-                return
-            self._key_detector = EasyOCRKeyDetector(reader)
-        key, conf, _texts = self._key_detector.detect(p)
-        if key:
-            if key in KEYS:
-                self.key_var.set(key)
-            self.key_conf_var.set(f"후보 신뢰도 {conf:.2f} · 승인 전 확인")
-        else:
-            self.key_conf_var.set("Key 후보 없음")
-    except Exception as e:
-        self.key_conf_var.set("Key 자동 인식 실패")
+    def _detect_key_candidate(self):
+        if not self.rows:
+            return
+        p = self._image_path(self.rows[self.index])
+        if not p or not p.exists():
+            self.key_conf_var.set("자동 인식 불가")
+            return
+        try:
+            if self._key_detector is None:
+                backend = create_ocr_backend("easyocr")
+                reader = getattr(backend, "_reader", None)
+                if reader is None:
+                    self.key_conf_var.set("자동 인식 불가")
+                    return
+                self._key_detector = EasyOCRKeyDetector(reader)
+            key, conf, _texts = self._key_detector.detect(p)
+            if key:
+                if key in KEYS:
+                    self.key_var.set(key)
+                self.key_conf_var.set(f"후보 신뢰도 {conf:.2f} · 승인 전 확인")
+            else:
+                self.key_conf_var.set("Key 후보 없음")
+        except Exception as e:
+            self.key_conf_var.set("Key 자동 인식 실패")
 
     def approve(self):
         if not self.rows:
