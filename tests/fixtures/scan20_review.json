@@ -1,0 +1,26 @@
+{
+  "source_sha256": "4167ba5a0b61f7d622f2d909bbef8ee3f245ef5d9195b76ca0ea11b59f281761",
+  "review_method": "Original scan inspected visually during development QA. Blank keys deliberately remain unconfirmed. This manifest is not an automatic approval rule for future pages.",
+  "pages": [
+    {"page": 1, "title": "예수 닮기를", "key": "E"},
+    {"page": 2, "title": "예수 닮기를", "key": "Eb"},
+    {"page": 3, "title": "예수 닮기를", "key": "C"},
+    {"page": 4, "title": "갈릴리 마을 그 숲속에서", "key": "A"},
+    {"page": 5, "title": "갈보리 산 위에", "key": "A"},
+    {"page": 6, "title": "여호와를 즐거이 불러", "key": "A"},
+    {"page": 7, "title": "감사해", "key": "F"},
+    {"page": 8, "title": "거룩하신 하나님 주께 감사드리세", "key": "F"},
+    {"page": 9, "title": "거친 세상에서", "key": ""},
+    {"page": 10, "title": "고개 들어", "key": "G"},
+    {"page": 11, "title": "고요한 밤 거룩한 밤", "key": ""},
+    {"page": 12, "title": "곤한 내 영혼 편히 쉴 곳과", "key": "G"},
+    {"page": 13, "title": "광야를 지나며", "key": ""},
+    {"page": 14, "title": "광야를 지나며", "key": "F"},
+    {"page": 15, "title": "광야를 지나며", "key": "F"},
+    {"page": 16, "title": "괴로울 때 주님의 얼굴보라 / 주만 바라볼지라", "key": "A"},
+    {"page": 17, "title": "괴로울 때 주님의 얼굴보라", "key": "A"},
+    {"page": 18, "title": "구주와 함께 나 죽었으니", "key": ""},
+    {"page": 19, "title": "그 맑고 환한 밤중에", "key": ""},
+    {"page": 20, "title": "그 사랑", "key": "G"}
+  ]
+}

@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# User-owned Worship Guide data / reference scores (never commit)
+data/
+qa-data/
+*.sqlite3
+*.sqlite3-*
+*.sqlite3.*.bak
+*.db
+*.db-*
+*.bak
+*.pdf
+*.png
+*.jpg
+*.jpeg
+wgdb_master.json
+ocr_results*.json
