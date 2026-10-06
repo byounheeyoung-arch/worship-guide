@@ -8,6 +8,8 @@
 
 Python 3.11 이상과 Tk가 필요합니다. 처음 한 번 체크아웃과 설치를 하고 이후 같은 체크아웃을 업데이트합니다.
 
+Linux에서 한글 화면을 표시하려면 한국어 글꼴도 설치되어 있어야 합니다. 예를 들어 Ubuntu에서는 `fonts-noto-cjk`를 사용할 수 있습니다. PDF 출력의 한글 글꼴은 별도로 포함됩니다.
+
 ```bash
 git clone --branch reboot-2026-10 https://github.com/byounheeyoung-arch/worship-guide.git
 cd worship-guide
