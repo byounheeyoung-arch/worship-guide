@@ -1,5 +1,12 @@
 # Worship Guide — Work Handoff (2026-10-06)
 
+Development checkpoint: the canonical Desktop app, schema migrations and
+metadata/Collection/PDF flow are integrated. Automated tests and the actual
+20-page scan E2E passed. Full 552-page processing and Windows-native release
+validation remain. Read [the current progress report](PROGRESS_2026-10-06.md)
+and [code audit](CODE_AUDIT_2026-10-06.md) before continuing; the historical
+recovery notes and acceptance requirements below remain useful context.
+
 ## Goal
 Complete a stable Worship Guide MVP this year without continuing the old cycle of downloading a new ZIP for every small fix.
 

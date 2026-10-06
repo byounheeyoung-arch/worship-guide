@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "worship-guide"
-version = "2.0.2"
+version = "2.1.0.dev0"
 description = "Worship Guide PDF OCR, WGDB Editor, Collections and PDF export"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "PyMuPDF>=1.24,<2",
-  "Pillow>=10,<12",
+  "Pillow>=10,<13",
   "numpy>=1.26,<3",
 ]
 
@@ -19,9 +19,14 @@ easyocr = ["easyocr>=1.7,<2"]
 dev = ["pytest>=8,<9"]
 
 [project.scripts]
-wg-app = "worship_guide.app_v2:main"
-wg-editor = "worship_guide.editor:main"
-wg-studio = "worship_guide.studio_v1:main"
+wg-app = "worship_guide.app:main"
+wg-editor = "worship_guide.app:main"
+wg-studio = "worship_guide.app:main"
+wg = "worship_guide.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

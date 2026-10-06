@@ -1,8 +1,9 @@
 @echo off
-set PY=C:\wge-venv\Scripts\python.exe
-if exist "%PY%" (
-  "%PY%" -m worship_guide.editor
+setlocal
+cd /d "%~dp0"
+if exist ".venv\Scripts\python.exe" (
+  ".venv\Scripts\python.exe" -m worship_guide
 ) else (
-  python -m worship_guide.editor
+  python -m worship_guide
 )
-pause
+if errorlevel 1 pause

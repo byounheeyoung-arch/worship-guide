@@ -40,9 +40,13 @@ def extract_pdf_pages(
         if page_count == 0:
             return []
 
-        first = max(1, start_page)
-        last = page_count if end_page is None else min(page_count, end_page)
-        if first > last:
+        first = start_page
+        last = page_count if end_page is None else end_page
+        if (
+            not isinstance(first, int)
+            or not isinstance(last, int)
+            or not 1 <= first <= last <= page_count
+        ):
             raise ValueError(f"페이지 범위가 잘못되었습니다: {first}~{last}")
 
         scale = dpi / 72

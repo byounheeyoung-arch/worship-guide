@@ -1,11 +1,11 @@
+"""Legacy result-file adapter around the canonical resumable pipeline."""
 
-from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-import csv
+import csv, json
+from .db import WGDB
+from .pipeline import import_document
 
-from .pdf_tools import extract_pdf_pages
-from .ocr_titles import ocr_title_directory, create_ocr_backend
 
 @dataclass
 class ImportResult:
@@ -16,47 +16,69 @@ class ImportResult:
     ocr_csv: Path
     page_count: int
 
+
 def import_pdf_to_ocr(
-    pdf_path: str | Path,
-    work_dir: str | Path,
-    *,
-    start_page: int = 1,
-    end_page: int | None = None,
-    engine: str = "easyocr",
-) -> ImportResult:
-    pdf_path = Path(pdf_path)
-    work_dir = Path(work_dir)
-    pdf_work = work_dir / "pdf_work"
-    ocr_out = work_dir / "ocr_titles"
-
-    manifest = extract_pdf_pages(
-        pdf_path=pdf_path,
-        output_dir=pdf_work,
-        start_page=start_page,
-        end_page=end_page,
-        title_crop_ratio=0.13,
-    )
-
-    title_dir = pdf_work / "title_crops"
-    backend = create_ocr_backend(engine)
-    ocr_title_directory(
-        title_dir=title_dir,
-        output_dir=ocr_out,
-        start_page=start_page,
-        end_page=end_page,
-        backend=backend,
-    )
-
-    csv_path = ocr_out / "titles_ocr.csv"
-    count = 0
-    if csv_path.exists():
-        with csv_path.open("r", encoding="utf-8-sig", newline="") as f:
-            count = sum(1 for _ in csv.DictReader(f))
-    return ImportResult(
-        pdf_path=pdf_path,
-        work_dir=work_dir,
-        pages_dir=pdf_work / "pages",
-        title_crops_dir=title_dir,
-        ocr_csv=csv_path,
-        page_count=count,
-    )
+    pdf_path, work_dir, *, start_page=1, end_page=None, engine="easyocr", db_path=None
+):
+    output = Path(work_dir).resolve()
+    (output / "ocr_titles").mkdir(parents=True, exist_ok=True)
+    with WGDB(db_path) as db:
+        result = import_document(
+            db, pdf_path, start_page=start_page, end_page=end_page, engine=engine
+        )
+        rows = [
+            r
+            for r in db.review_queue(result.source_id, True)
+            if start_page <= r["page"] <= (end_page or 10**9)
+        ]
+        csv_path = output / "ocr_titles/titles_ocr.csv"
+        with csv_path.open("w", encoding="utf-8-sig", newline="") as file:
+            writer = csv.DictWriter(
+                file,
+                fieldnames=[
+                    "page",
+                    "title",
+                    "raw_title",
+                    "confidence",
+                    "review_required",
+                    "image",
+                    "source_pdf",
+                    "key_candidate",
+                ],
+            )
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(
+                    {
+                        "page": row["page"],
+                        "title": row["raw_title"],
+                        "raw_title": row["raw_title"],
+                        "confidence": row["confidence"],
+                        "review_required": True,
+                        "image": row["image_path"],
+                        "source_pdf": row["source_pdf"],
+                        "key_candidate": row["key_candidate"],
+                    }
+                )
+        source = db.conn.execute(
+            "SELECT * FROM source_documents WHERE id=?", (result.source_id,)
+        ).fetchone()
+        (output / "import_manifest.json").write_text(
+            json.dumps(
+                {
+                    "source_pdf": source["stored_path"],
+                    "source_sha256": source["sha256"],
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        root = db.path.parent / "work" / source["sha256"]
+        return ImportResult(
+            Path(source["stored_path"]),
+            output,
+            root / "pages",
+            root / "title_crops",
+            csv_path,
+            len(rows),
+        )

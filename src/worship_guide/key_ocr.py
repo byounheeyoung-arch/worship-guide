@@ -1,87 +1,171 @@
+"""Conservative key candidates. Suggestions never set an authoritative key."""
 
 from __future__ import annotations
-from pathlib import Path
 import re
-from collections import Counter
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from PIL import Image
 import numpy as np
 
-# Common chord roots including flats/sharps and minor suffix.
-CHORD_RE = re.compile(
-    r"(?<![A-Za-z])([A-G])([#b♭♯]?)(m|maj|min|sus|dim|aug)?(?:\d{0,2})?(?:/[A-G][#b♭♯]?)?(?![A-Za-z])",
-    re.IGNORECASE,
+ROOTS = (
+    "C",
+    "Db",
+    "C#",
+    "D",
+    "Eb",
+    "D#",
+    "E",
+    "Fb",
+    "E#",
+    "F",
+    "Gb",
+    "F#",
+    "G",
+    "Ab",
+    "G#",
+    "A",
+    "Bb",
+    "A#",
+    "B",
+    "Cb",
+    "B#",
 )
+KEYS = ["", *ROOTS, *(r + "m" for r in ROOTS)]
+_PC = {
+    "C": 0,
+    "B#": 0,
+    "Db": 1,
+    "C#": 1,
+    "D": 2,
+    "Eb": 3,
+    "D#": 3,
+    "E": 4,
+    "Fb": 4,
+    "F": 5,
+    "E#": 5,
+    "Gb": 6,
+    "F#": 6,
+    "G": 7,
+    "Ab": 8,
+    "G#": 8,
+    "A": 9,
+    "Bb": 10,
+    "A#": 10,
+    "B": 11,
+    "Cb": 11,
+}
+CHORD_RE = re.compile(
+    r"(?<![A-Za-z0-9])([A-G])([#b♭♯]?)(maj|min|sus|dim|aug|m|M)?(?:\d{0,2})(?:\([^)]{1,8}\))?(?:/[A-G][#b♭♯]?)?(?![A-Za-z0-9])"
+)
+_SIGNATURE = r"([A-G])\s*([#b♭♯]?)\s*(minor|major|min|maj|m|M)?"
+EXPLICIT = [
+    re.compile(
+        r"(?:\b[Kk][Ee][Yy]|조성|조)\s*[:=]?\s*" + _SIGNATURE + r"(?![A-Za-z0-9])"
+    ),
+    re.compile(
+        r"(?<![A-Za-z0-9])"
+        + _SIGNATURE
+        + r"\s*(?:[Kk][Ee][Yy]|장조|단조)(?![A-Za-z0-9])"
+    ),
+]
 
-def _normalize_root(letter: str, accidental: str) -> str:
-    accidental = accidental.replace("♭", "b").replace("♯", "#")
-    return letter.upper() + accidental
+
+def normalize_signature(value) -> str:
+    value = str(value or "").strip().replace("♭", "b").replace("♯", "#")
+    if not value:
+        return ""
+    m = re.fullmatch(r"([A-Ga-g])([#b]?)(m|minor|major|maj|min|M)?", value)
+    if not m:
+        raise ValueError(f"지원하지 않는 Key: {value}")
+    key = m[1].upper() + m[2] + ("m" if m[3] in {"m", "minor", "min"} else "")
+    if key not in KEYS:
+        raise ValueError(f"지원하지 않는 Key: {value}")
+    return key
+
 
 def extract_chord_roots(texts: list[str]) -> list[tuple[str, bool]]:
-    out = []
-    for text in texts:
-        for m in CHORD_RE.finditer(text or ""):
-            root = _normalize_root(m.group(1), m.group(2))
-            qual = (m.group(3) or "").lower()
-            minor = qual in {"m", "min"}
-            out.append((root, minor))
-    return out
+    return [
+        (m[1] + m[2].replace("♭", "b").replace("♯", "#"), m[3] in {"m", "min"})
+        for text in texts
+        for m in CHORD_RE.finditer(text or "")
+    ]
 
-def infer_key_from_chords(chords: list[tuple[str, bool]]) -> tuple[str | None, float]:
-    """
-    Conservative candidate inference.
-    This is NOT treated as final truth; Review Center still requires user approval.
-    """
-    if not chords:
+
+def infer_key_from_chords(chords):
+    if len(chords) < 4 or len(set(r for r, _ in chords)) < 2:
         return None, 0.0
+    candidates = []
+    for tonic, minor in set(chords):
+        if tonic not in _PC:
+            continue
+        scale = {0, 2, 3, 5, 7, 8, 10} if minor else {0, 2, 4, 5, 7, 9, 11}
+        fit = sum(
+            (_PC.get(r, -99) - _PC[tonic]) % 12 in scale for r, _ in chords
+        ) / len(chords)
+        count = sum(r == tonic and m == minor for r, m in chords) / len(chords)
+        edge = int(chords[0] == (tonic, minor)) + int(chords[-1] == (tonic, minor))
+        candidates.append(
+            (0.55 * fit + 0.25 * count + 0.1 * edge, tonic + ("m" if minor else ""))
+        )
+    candidates.sort(reverse=True)
+    if len(candidates) < 2 or candidates[0][0] - candidates[1][0] < 0.1:
+        return None, 0.0
+    confidence = min(0.74, candidates[0][0])
+    if confidence < 0.65:
+        return None, round(confidence, 4)
+    return candidates[0][1], round(confidence, 4)
 
-    # Score tonic candidates using occurrence, first chord, and last chord.
-    roots = [r for r, _ in chords]
-    counts = Counter(roots)
-    first_root, first_minor = chords[0]
-    last_root, last_minor = chords[-1]
 
-    candidates = {}
-    for root, cnt in counts.items():
-        score = cnt * 1.0
-        if root == first_root:
-            score += 1.5
-        if root == last_root:
-            score += 2.0
-        candidates[root] = score
+@dataclass(frozen=True)
+class KeyCandidate:
+    key: str | None
+    confidence: float
+    method: str
+    texts: list[str]
+    chords: list[tuple[str, bool]]
+    reason: str = ""
 
-    tonic = max(candidates, key=candidates.get)
-    # Minor only when tonic occurs as minor and especially if first/last tonic is minor.
-    tonic_minor_votes = sum(1 for r, m in chords if r == tonic and m)
-    tonic_total = sum(1 for r, _ in chords if r == tonic)
-    is_minor = tonic_total > 0 and tonic_minor_votes / tonic_total >= 0.6
-    if tonic == first_root and first_minor:
-        is_minor = True
-    if tonic == last_root and last_minor:
-        is_minor = True
+    def evidence(self):
+        return asdict(self)
 
-    total_score = sum(candidates.values()) or 1.0
-    conf = min(0.95, candidates[tonic] / total_score + 0.15)
-    return tonic + ("m" if is_minor else ""), round(conf, 4)
+
+def detect_key_candidate(texts):
+    explicit = set()
+    for text in texts:
+        for pattern in EXPLICIT:
+            for m in pattern.finditer(text):
+                key = m[1] + m[2].replace("♭", "b").replace("♯", "#")
+                minor = m[3] in {"m", "minor", "min"} or "단조" in m[0]
+                explicit.add(key + ("m" if minor else ""))
+    chords = extract_chord_roots(texts)
+    if len(explicit) == 1:
+        return KeyCandidate(explicit.pop(), 0.95, "printed", texts, chords)
+    if len(explicit) > 1:
+        return KeyCandidate(
+            None, 0, "conflict", texts, chords, "Conflicting printed key labels"
+        )
+    key, confidence = infer_key_from_chords(chords)
+    return KeyCandidate(
+        key,
+        confidence,
+        "chords" if key else "unknown",
+        texts,
+        chords,
+        "Manual confirmation required; staff signature is not automatically read",
+    )
+
 
 class EasyOCRKeyDetector:
     def __init__(self, reader):
         self.reader = reader
 
-    def detect(self, image_path: str | Path) -> tuple[str | None, float, list[str]]:
-        p = Path(image_path)
-        im = Image.open(p).convert("RGB")
-        # Chords/key clues are concentrated near the top of the score.
-        crop = im.crop((0, 0, im.width, max(1, int(im.height * 0.32))))
-        arr = np.array(crop)
-        outputs = self.reader.readtext(arr, detail=1, paragraph=False)
-        texts = []
-        for item in outputs:
-            try:
-                text = str(item[1]).strip()
-            except Exception:
-                continue
-            if text:
-                texts.append(text)
-        chords = extract_chord_roots(texts)
-        key, conf = infer_key_from_chords(chords)
-        return key, conf, texts
+    def detect(self, image_path):
+        with Image.open(image_path) as im:
+            crop = im.convert("RGB").crop(
+                (0, 0, im.width, max(1, int(im.height * 0.32)))
+            )
+            outputs = self.reader.readtext(np.array(crop), detail=1, paragraph=False)
+        result = detect_key_candidate(
+            [str(o[1]).strip() for o in outputs if len(o) >= 3]
+        )
+        return result.key, result.confidence, result.texts

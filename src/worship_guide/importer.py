@@ -27,13 +27,15 @@ def _expand_file(path: Path) -> Iterable[Path]:
         return
 
     if path.suffix.lower() == ".zip":
-        temp_root = Path(tempfile.mkdtemp(prefix="wg_zip_"))
         try:
-            with zipfile.ZipFile(path) as archive:
-                archive.extractall(temp_root)
-            for item in sorted(temp_root.rglob("*")):
-                if item.is_file() and item.suffix.lower() in SUPPORTED:
-                    # 임시 파일은 build 실행 중에만 사용됩니다.
-                    yield item
+            with tempfile.TemporaryDirectory(prefix="wg_zip_") as directory:
+                temp_root = Path(directory)
+                with zipfile.ZipFile(path) as archive:
+                    archive.extractall(temp_root)
+                for item in sorted(temp_root.rglob("*")):
+                    if item.is_file() and item.suffix.lower() in SUPPORTED:
+                        # The generator keeps the temporary directory alive
+                        # until the caller consumes or closes the iterator.
+                        yield item
         except zipfile.BadZipFile as exc:
             raise ValueError(f"손상된 ZIP 파일입니다: {path}") from exc

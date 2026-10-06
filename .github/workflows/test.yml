@@ -1,0 +1,38 @@
+name: Desktop MVP tests
+on:
+  push:
+    branches: [reboot-2026-10, main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.11'
+          - os: windows-latest
+            python: '3.12'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - name: Desktop and core checks (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb
+          xvfb-run -a python -m pytest -q
+      - name: Core checks (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pytest -q
+      - name: Compile all recovered modules
+        run: python -m compileall -q src
+      - name: Verify package builds
+        run: python -m pip wheel --no-deps --wheel-dir wheelhouse .
